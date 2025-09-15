@@ -1,0 +1,362 @@
+-- AdminFlyGuiClient
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local event = ReplicatedStorage:WaitForChild("AdminActionEvent")
+
+-- UI building helper
+local function new(typeName, props)
+	local obj = Instance.new(typeName)
+	if props then
+		for k,v in pairs(props) do obj[k] = v end
+	end
+	return obj
+end
+
+-- Root GUI
+local screenGui = new("ScreenGui", {Name = "AdminFlyGui", ResetOnSpawn = false, Parent = player:WaitForChild("PlayerGui")})
+
+-- Main window
+local main = new("Frame", {
+	Parent = screenGui,
+	Size = UDim2.new(0, 420, 0, 360),
+	Position = UDim2.new(0.5, -210, 0.5, -180),
+	BackgroundColor3 = Color3.fromRGB(28,28,30),
+	BorderSizePixel = 0,
+	Active = true,
+	Draggable = true,
+})
+
+local title = new("TextLabel", {
+	Parent = main,
+	Size = UDim2.new(1,0,0,36),
+	Position = UDim2.new(0,0,0,0),
+	BackgroundColor3 = Color3.fromRGB(20,20,22),
+	Text = "Admin Panel (Press LeftControl to hide/show)",
+	TextColor3 = Color3.fromRGB(255,255,255),
+	Font = Enum.Font.SourceSansBold,
+	TextSize = 18,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	Padding = Enum.PaddingWidget.new(6)
+})
+
+-- Left column for local controls
+local leftCol = new("Frame", {Parent = main, Size = UDim2.new(0,200,1,-40), Position = UDim2.new(0,10,0,44), BackgroundTransparency = 1})
+
+local flyBtn = new("TextButton", {
+	Parent = leftCol,
+	Size = UDim2.new(1,0,0,40),
+	Position = UDim2.new(0,0,0,0),
+	Text = "Start Fly",
+	Font = Enum.Font.SourceSans,
+	TextSize = 18,
+	BackgroundColor3 = Color3.fromRGB(60,120,220),
+	TextColor3 = Color3.fromRGB(255,255,255),
+})
+
+local jumpSelectLabel = new("TextLabel", {
+	Parent = leftCol,
+	Size = UDim2.new(1,0,0,24),
+	Position = UDim2.new(0,0,0,50),
+	Text = "Jump Level: Normal",
+	Font = Enum.Font.SourceSans,
+	TextSize = 16,
+	TextColor3 = Color3.fromRGB(240,240,240),
+	BackgroundTransparency = 1
+})
+
+local jumpCycleBtn = new("TextButton", {
+	Parent = leftCol,
+	Size = UDim2.new(0.5, -5,0,34),
+	Position = UDim2.new(0,0,0,80),
+	Text = "Cycle Jump",
+	Font = Enum.Font.SourceSans,
+	TextSize = 16,
+	BackgroundColor3 = Color3.fromRGB(200,140,60),
+	TextColor3 = Color3.fromRGB(255,255,255),
+})
+
+local jumpApplySelfBtn = new("TextButton", {
+	Parent = leftCol,
+	Size = UDim2.new(0.5, -5,0,34),
+	Position = UDim2.new(0.5, 5,0,80),
+	Text = "Apply To Self",
+	Font = Enum.Font.SourceSans,
+	TextSize = 16,
+	BackgroundColor3 = Color3.fromRGB(80,200,120),
+	TextColor3 = Color3.fromRGB(255,255,255),
+})
+
+local espBtn = new("TextButton", {
+	Parent = leftCol,
+	Size = UDim2.new(1,0,0,34),
+	Position = UDim2.new(0,0,0,124),
+	Text = "Enable ESP",
+	Font = Enum.Font.SourceSans,
+	TextSize = 16,
+	BackgroundColor3 = Color3.fromRGB(170,80,200),
+	TextColor3 = Color3.fromRGB(255,255,255),
+})
+
+local speedLabel = new("TextLabel", {
+	Parent = leftCol,
+	Size = UDim2.new(1,0,0,24),
+	Position = UDim2.new(0,0,0,168),
+	Text = "Fly Speed: 50",
+	Font = Enum.Font.SourceSans,
+	TextSize = 16,
+	TextColor3 = Color3.fromRGB(240,240,240),
+	BackgroundTransparency = 1
+})
+
+local speedMinus = new("TextButton", {Parent = leftCol, Size = UDim2.new(0.48,0,0,34), Position = UDim2.new(0,0,0,196), Text = "-", Font = Enum.Font.SourceSans, TextSize = 24})
+local speedPlus  = new("TextButton", {Parent = leftCol, Size = UDim2.new(0.48,0,0,34), Position = UDim2.new(0.52,0,0,196), Text = "+", Font = Enum.Font.SourceSans, TextSize = 24})
+
+-- Right column: player list and actions
+local rightCol = new("Frame", {Parent = main, Size = UDim2.new(0,200,1,-40), Position = UDim2.new(0,210,0,44), BackgroundTransparency = 1})
+local searchBox = new("TextBox", {Parent = rightCol, Size = UDim2.new(1,0,0,30), Position = UDim2.new(0,0,0,0), PlaceholderText = "Search player name..."})
+local playerList = new("ScrollingFrame", {Parent = rightCol, Size = UDim2.new(1,0,1,-40), Position = UDim2.new(0,0,0,36), CanvasSize = UDim2.new(0,0), ScrollBarThickness = 6})
+local listLayout = new("UIListLayout", {Parent = playerList, Padding = UDim.new(0,6)})
+
+-- Small helper to create player entry
+local function createPlayerEntry(p)
+	local entry = new("Frame", {Parent = playerList, Size = UDim2.new(1,0,0,52), BackgroundColor3 = Color3.fromRGB(35,35,37)})
+	local nameLabel = new("TextLabel", {Parent = entry, Size = UDim2.new(0.6, -6,1,0), Position = UDim2.new(0,6,0,0), Text = p.Name, TextXAlignment = Enum.TextXAlignment.Left, BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(225,225,225)})
+	local floatBtn = new("TextButton", {Parent = entry, Size = UDim2.new(0.38, -6,0.5,-4), Position = UDim2.new(0.62, 0, 0.08, 0), Text = "Float (10s)", BackgroundColor3 = Color3.fromRGB(80,120,220)})
+	local jbBtn = new("TextButton", {Parent = entry, Size = UDim2.new(0.38, -6,0.4,-4), Position = UDim2.new(0.62, 0, 0.6, 0), Text = "Boost (30s)", BackgroundColor3 = Color3.fromRGB(120,200,80)})
+
+	-- click handlers send server requests
+	floatBtn.MouseButton1Click:Connect(function()
+		event:FireServer("FloatPlayer", {target = p.Name, duration = 10, height = 10})
+	end)
+	jbBtn.MouseButton1Click:Connect(function()
+		-- prompt level chosen will be whichever is currentJumpLevel variable
+		event:FireServer("JumpBoostPlayer", {target = p.Name, level = currentJumpLevel, duration = 30})
+	end)
+	return entry
+end
+
+-- Populate list
+local function refreshPlayerList(filter)
+	playerList:ClearAllChildren()
+	for _,c in pairs(listLayout:GetChildren()) do if c:IsA("UITextSizeConstraint") then c:Destroy() end end
+	local y = 0
+	for _,p in pairs(Players:GetPlayers()) do
+		if p ~= player then
+			if not filter or filter == "" or p.Name:lower():find(filter:lower()) then
+				local e = createPlayerEntry(p)
+				y = y + 58
+			end
+		end
+	end
+	playerList.CanvasSize = UDim2.new(0,0,0,y)
+end
+
+-- Flight (local only, smooth using LinearVelocity)
+local flying = false
+local lv, attach
+local moveVec = Vector3.new()
+local currentSpeed = 50
+local acceleration = 8
+
+local function createLocalFly(hrp)
+	attach = Instance.new("Attachment", hrp)
+	attach.Name = "AdminFlyAttach"
+	lv = Instance.new("LinearVelocity", hrp)
+	lv.Name = "AdminFlyLV"
+	lv.Attachment0 = attach
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.MaxForce = Vector3.new(1e6,1e6,1e6)
+end
+
+local function destroyLocalFly()
+	if lv and lv.Parent then lv:Destroy() end
+	if attach and attach.Parent then attach:Destroy() end
+	lv, attach = nil, nil
+end
+
+local moveInputState = {W=false,A=false,S=false,D=false,Up=false,Down=false}
+
+local function updateMoveVec()
+	local z = (moveInputState.W and 1 or 0) - (moveInputState.S and 1 or 0)
+	local x = (moveInputState.D and 1 or 0) - (moveInputState.A and 1 or 0)
+	local y = (moveInputState.Up and 1 or 0) - (moveInputState.Down and 1 or 0)
+	moveVec = Vector3.new(x, y, z)
+end
+
+-- jump level state
+local jumpLevels = {"Low", "Normal", "High"}
+local currentJumpIndex = 2 -- Normal
+local currentJumpLevel = jumpLevels[currentJumpIndex]
+
+-- apply jump to self (client-side)
+local function applyJumpToSelf(level)
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChildWhichIsA("Humanoid")
+	if not hum then return end
+	local levels = { Low = 40, Normal = (hum.UseJumpPower and hum.JumpPower) or hum.JumpHeight, High = 100 }
+	local val = levels[level] or levels.Normal
+	if hum.UseJumpPower then
+		hum.JumpPower = val
+	else
+		hum.JumpHeight = val
+	end
+end
+
+-- ESP: highlight players
+local espEnabled = false
+local highlights = {}
+
+local function toggleESP()
+	espEnabled = not espEnabled
+	espBtn.Text = espEnabled and "Disable ESP" or "Enable ESP"
+	if espEnabled then
+		for _,p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character then
+				local h = Instance.new("Highlight")
+				h.Name = "AdminESP"
+				h.Parent = p.Character
+				h.FillTransparency = 0.7
+				h.OutlineTransparency = 0
+				h.OutlineColor = Color3.fromRGB(255, 0, 0)
+				highlights[p] = h
+			end
+		end
+	else
+		for p,h in pairs(highlights) do
+			if h and h.Parent then h:Destroy() end
+		end
+		highlights = {}
+	end
+end
+
+-- Hook player joins to add highlight if ESP is on
+Players.PlayerAdded:Connect(function(plr)
+	refreshPlayerList(searchBox.Text)
+	if espEnabled then
+		plr.CharacterAdded:Connect(function()
+			if espEnabled and plr.Character then
+				local h = Instance.new("Highlight")
+				h.Name = "AdminESP"
+				h.Parent = plr.Character
+				h.FillTransparency = 0.7
+				h.OutlineTransparency = 0
+				h.OutlineColor = Color3.fromRGB(255, 0, 0)
+				highlights[plr] = h
+			end
+		end)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+	if highlights[plr] then
+		highlights[plr]:Destroy()
+		highlights[plr] = nil
+	end
+	refreshPlayerList(searchBox.Text)
+end)
+
+-- Input handlers
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.W then moveInputState.W = true; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.S then moveInputState.S = true; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.A then moveInputState.A = true; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.D then moveInputState.D = true; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.Space then moveInputState.Up = true; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.LeftShift then moveInputState.Down = true; updateMoveVec() end
+
+	if input.KeyCode == Enum.KeyCode.LeftControl then
+		main.Visible = not main.Visible
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then moveInputState.W = false; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.S then moveInputState.S = false; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.A then moveInputState.A = false; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.D then moveInputState.D = false; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.Space then moveInputState.Up = false; updateMoveVec() end
+	if input.KeyCode == Enum.KeyCode.LeftShift then moveInputState.Down = false; updateMoveVec() end
+end)
+
+-- RenderStepped: update local fly velocity (smooth)
+RunService.RenderStepped:Connect(function(dt)
+	if flying and lv and attach and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local cam = workspace.CurrentCamera
+		local dir = (cam.CFrame.RightVector * moveVec.X) + (cam.CFrame.UpVector * moveVec.Y) + (cam.CFrame.LookVector * moveVec.Z)
+		if dir.Magnitude > 0 then dir = dir.Unit end
+		local target = dir * currentSpeed
+		-- lerp (smooth)
+		lv.VectorVelocity = lv.VectorVelocity:Lerp(target, math.clamp(acceleration * dt, 0, 1))
+		-- align orientation to camera
+		local align = player.Character:FindFirstChildWhichIsA("AlignOrientation")
+		if align then
+			align.CFrame = cam.CFrame
+		end
+	end
+end)
+
+-- GUI button logic
+flyBtn.MouseButton1Click:Connect(function()
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not flying then
+		createLocalFly(hrp)
+		-- create AlignOrientation for nicer facing
+		local ao = Instance.new("AlignOrientation", hrp)
+		ao.Attachment0 = attach
+		ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		ao.Responsiveness = 200
+		flyBtn.Text = "Stop Fly"
+		flying = true
+	else
+		destroyLocalFly()
+		-- cleanup AO
+		local ao = hrp:FindFirstChildWhichIsA("AlignOrientation")
+		if ao then ao:Destroy() end
+		flyBtn.Text = "Start Fly"
+		flying = false
+	end
+end)
+
+jumpCycleBtn.MouseButton1Click:Connect(function()
+	currentJumpIndex = currentJumpIndex % #jumpLevels + 1
+	currentJumpLevel = jumpLevels[currentJumpIndex]
+	jumpSelectLabel.Text = "Jump Level: " .. currentJumpLevel
+end)
+
+jumpApplySelfBtn.MouseButton1Click:Connect(function()
+	applyJumpToSelf(currentJumpLevel)
+end)
+
+espBtn.MouseButton1Click:Connect(toggleESP)
+
+speedPlus.MouseButton1Click:Connect(function()
+	currentSpeed = currentSpeed + 10
+	speedLabel.Text = "Fly Speed: " .. currentSpeed
+end)
+speedMinus.MouseButton1Click:Connect(function()
+	if currentSpeed > 10 then
+		currentSpeed = currentSpeed - 10
+		speedLabel.Text = "Fly Speed: " .. currentSpeed
+	end
+end)
+
+-- Search box live refresh
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	refreshPlayerList(searchBox.Text)
+end)
+
+-- initial population
+refreshPlayerList()
+
+-- Expose helper for external toggles if needed
+screenGui.Enabled = true
