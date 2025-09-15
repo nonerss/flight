@@ -1,0 +1,206 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local char, hrp, hum
+local flying = false
+local lv, attach
+local ascend, moveInput = 0, Vector3.new(0,0,0)
+local keysDown = {}
+
+-- UI refs
+local frame = script.Parent
+local flyBtn = frame:WaitForChild("ToggleFlyButton")
+local jumpBtn = frame:WaitForChild("JumpBoostButton")
+local playerList = frame:WaitForChild("PlayerList")
+local espBtn = Instance.new("TextButton", frame)
+espBtn.Size = UDim2.new(0, 160, 0, 30)
+espBtn.Position = UDim2.new(0, 220, 0, 10)
+espBtn.Text = "Enable ESP"
+
+-- SETTINGS
+local SPEED = 60
+local ASCEND_SPEED = 40
+local MAX_FORCE = 1e5
+
+-- jump levels
+local JUMP_LEVELS = {
+	Low = 40,
+	Normal = 50, -- Roblox default
+	High = 100
+}
+local currentJump = "Normal"
+
+-- ESP state
+local espEnabled = false
+local highlights = {}
+
+-- ========== FLIGHT ==========
+local function createFlight(hrp)
+	attach = hrp:FindFirstChild("FlyAttach") or Instance.new("Attachment", hrp)
+	attach.Name = "FlyAttach"
+
+	lv = hrp:FindFirstChild("FlyVel") or Instance.new("LinearVelocity", hrp)
+	lv.Name = "FlyVel"
+	lv.Attachment0 = attach
+	lv.MaxForce = Vector3.new(MAX_FORCE, MAX_FORCE, MAX_FORCE)
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+end
+
+local function destroyFlight()
+	if lv then lv:Destroy() end
+	if attach then attach:Destroy() end
+	lv, attach = nil, nil
+end
+
+local function toggleFly()
+	char = player.Character or player.CharacterAdded:Wait()
+	hrp = char:WaitForChild("HumanoidRootPart")
+	flying = not flying
+	flyBtn.Text = flying and "Stop Flying" or "Start Flying"
+	if flying then
+		createFlight(hrp)
+	else
+		destroyFlight()
+	end
+end
+
+-- ========== INPUT ==========
+local function refreshMove()
+	local f = (keysDown.W and 1 or 0) - (keysDown.S and 1 or 0)
+	local r = (keysDown.D and 1 or 0) - (keysDown.A and 1 or 0)
+	moveInput = Vector3.new(r, 0, f)
+end
+
+UserInputService.InputBegan:Connect(function(input,gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.W then keysDown.W=true; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.S then keysDown.S=true; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.A then keysDown.A=true; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.D then keysDown.D=true; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.Space then ascend = 1 end
+	if input.KeyCode == Enum.KeyCode.LeftShift then ascend = -1 end
+	if input.KeyCode == Enum.KeyCode.LeftControl then
+		frame.Visible = not frame.Visible
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then keysDown.W=false; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.S then keysDown.S=false; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.A then keysDown.A=false; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.D then keysDown.D=false; refreshMove() end
+	if input.KeyCode == Enum.KeyCode.Space and ascend==1 then ascend=0 end
+	if input.KeyCode == Enum.KeyCode.LeftShift and ascend==-1 then ascend=0 end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if flying and lv and hrp then
+		local cam = workspace.CurrentCamera
+		local dir = (cam.CFrame.LookVector * moveInput.Z) + (cam.CFrame.RightVector * moveInput.X)
+		if dir.Magnitude > 0 then dir = dir.Unit end
+		lv.VectorVelocity = (dir * SPEED) + Vector3.new(0, ascend * ASCEND_SPEED, 0)
+	end
+end)
+
+-- ========== JUMP BOOST ==========
+local function cycleJumpBoost()
+	char = player.Character or player.CharacterAdded:Wait()
+	hum = char:WaitForChild("Humanoid")
+
+	-- cycle through Low -> Normal -> High -> Low
+	if currentJump == "Low" then
+		currentJump = "Normal"
+	elseif currentJump == "Normal" then
+		currentJump = "High"
+	else
+		currentJump = "Low"
+	end
+
+	hum.JumpPower = JUMP_LEVELS[currentJump]
+	jumpBtn.Text = "Jump: " .. currentJump
+end
+
+-- ========== FRIEND FLOAT ==========
+local function makePlayerFloat(targetPlayer)
+	if targetPlayer and targetPlayer.Character then
+		local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if targetHRP then
+			local a = Instance.new("BodyPosition")
+			a.Position = targetHRP.Position + Vector3.new(0,10,0)
+			a.MaxForce = Vector3.new(1e5,1e5,1e5)
+			a.Parent = targetHRP
+			game:GetService("Debris"):AddItem(a, 10) -- float 10s
+		end
+	end
+end
+
+-- ========== ESP ==========
+local function toggleESP()
+	espEnabled = not espEnabled
+	espBtn.Text = espEnabled and "Disable ESP" or "Enable ESP"
+
+	if espEnabled then
+		for _,plr in pairs(Players:GetPlayers()) do
+			if plr ~= player and plr.Character then
+				local h = Instance.new("Highlight")
+				h.FillTransparency = 0.7
+				h.OutlineColor = Color3.fromRGB(255,0,0)
+				h.Parent = plr.Character
+				highlights[plr] = h
+			end
+		end
+	else
+		for plr,h in pairs(highlights) do
+			if h then h:Destroy() end
+		end
+		highlights = {}
+	end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+	if espEnabled then
+		plr.CharacterAdded:Connect(function(char)
+			local h = Instance.new("Highlight")
+			h.FillTransparency = 0.7
+			h.OutlineColor = Color3.fromRGB(255,0,0)
+			h.Parent = char
+			highlights[plr] = h
+		end)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+	if highlights[plr] then
+		highlights[plr]:Destroy()
+		highlights[plr] = nil
+	end
+end)
+
+-- ========== PLAYER LIST ==========
+local function refreshPlayers()
+	playerList:ClearAllChildren()
+	for _,plr in pairs(Players:GetPlayers()) do
+		if plr ~= player then
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1,0,0,30)
+			btn.Text = "Float "..plr.Name
+			btn.Parent = playerList
+			btn.MouseButton1Click:Connect(function()
+				makePlayerFloat(plr)
+			end)
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(refreshPlayers)
+Players.PlayerRemoving:Connect(refreshPlayers)
+
+-- Buttons
+flyBtn.MouseButton1Click:Connect(toggleFly)
+jumpBtn.MouseButton1Click:Connect(cycleJumpBoost)
+espBtn.MouseButton1Click:Connect(toggleESP)
+
+refreshPlayers()
+jumpBtn.Text = "Jump: Normal"
