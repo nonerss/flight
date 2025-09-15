@@ -1,0 +1,254 @@
+--// Smooth Fly + Admin Panel Script
+-- Place this in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+--// UI
+local screenGui = Instance.new("ScreenGui", game.CoreGui)
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 400, 0, 300)
+frame.Position = UDim2.new(0.5, -200, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.Visible = true
+
+local uiCorner = Instance.new("UICorner", frame)
+uiCorner.CornerRadius = UDim.new(0, 10)
+
+local uiLayout = Instance.new("UIListLayout", frame)
+uiLayout.FillDirection = Enum.FillDirection.Horizontal
+uiLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+uiLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+-- Left Column (local controls)
+local leftCol = Instance.new("Frame", frame)
+leftCol.Size = UDim2.new(0.5, -10, 1, -10)
+leftCol.BackgroundTransparency = 1
+local leftLayout = Instance.new("UIListLayout", leftCol)
+leftLayout.Padding = UDim.new(0, 10)
+
+-- Right Column (admin panel)
+local rightCol = Instance.new("Frame", frame)
+rightCol.Size = UDim2.new(0.5, -10, 1, -10)
+rightCol.BackgroundTransparency = 1
+local rightLayout = Instance.new("UIListLayout", rightCol)
+rightLayout.Padding = UDim.new(0, 10)
+
+-- Helper: Make buttons
+local function makeButton(parent, text)
+	local btn = Instance.new("TextButton")
+	btn.Text = text
+	btn.Size = UDim2.new(0.9, 0, 0, 30)
+	btn.Position = UDim2.new(0.05, 0, 0, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.Parent = parent
+	local corner = Instance.new("UICorner", btn)
+	corner.CornerRadius = UDim.new(0, 6)
+	return btn
+end
+
+--// Controls
+local flyEnabled = false
+local moveDir = Vector3.zero
+local speed = 100
+local lv, ao
+local espEnabled = false
+local defaultJump = humanoid.JumpPower
+
+-- Fly Toggle
+local flyBtn = makeButton(leftCol, "Fly: OFF")
+flyBtn.MouseButton1Click:Connect(function()
+	flyEnabled = not flyEnabled
+	flyBtn.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+
+	if flyEnabled then
+		lv = Instance.new("LinearVelocity")
+		lv.MaxForce = 1e9
+		lv.Attachment = Instance.new("Attachment", hrp)
+		lv.Parent = hrp
+
+		ao = Instance.new("AlignOrientation")
+		ao.MaxTorque = 1e9
+		ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		ao.Attachment0 = lv.Attachment
+		ao.Parent = hrp
+	else
+		if lv then lv:Destroy() end
+		if ao then ao:Destroy() end
+	end
+end)
+
+-- Speed Control
+local speedBtn = makeButton(leftCol, "Speed: " .. speed)
+speedBtn.MouseButton1Click:Connect(function()
+	speed = (speed == 100 and 200) or (speed == 200 and 300) or 100
+	speedBtn.Text = "Speed: " .. speed
+end)
+
+-- Jump Boost Cycle
+local levels = {"Low", "Normal", "High"}
+local boosts = {defaultJump * 1.2, defaultJump, defaultJump * 2}
+local jIndex = 2
+local jumpBtn = makeButton(leftCol, "Jump: Normal")
+jumpBtn.MouseButton1Click:Connect(function()
+	jIndex = jIndex % #levels + 1
+	humanoid.JumpPower = boosts[jIndex]
+	jumpBtn.Text = "Jump: " .. levels[jIndex]
+end)
+
+-- ESP Toggle
+local espBtn = makeButton(leftCol, "ESP: OFF")
+
+local function toggleESP(state)
+	espEnabled = state
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local char = plr.Character
+			if char then
+				if state then
+					if not char:FindFirstChild("Highlight") then
+						local h = Instance.new("Highlight", char)
+						h.FillTransparency = 1
+						h.OutlineColor = Color3.fromRGB(255, 0, 0)
+					end
+				else
+					local h = char:FindFirstChild("Highlight")
+					if h then h:Destroy() end
+				end
+			end
+		end
+	end
+end
+
+espBtn.MouseButton1Click:Connect(function()
+	espEnabled = not espEnabled
+	espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+	toggleESP(espEnabled)
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function(char)
+		if espEnabled then
+			local h = Instance.new("Highlight", char)
+			h.FillTransparency = 1
+			h.OutlineColor = Color3.fromRGB(255, 0, 0)
+		end
+	end)
+end)
+
+--// Admin Panel
+local searchBox = Instance.new("TextBox", rightCol)
+searchBox.Size = UDim2.new(0.9, 0, 0, 30)
+searchBox.PlaceholderText = "Search Player..."
+searchBox.Text = ""
+searchBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
+searchBox.TextColor3 = Color3.new(1,1,1)
+local searchCorner = Instance.new("UICorner", searchBox)
+searchCorner.CornerRadius = UDim.new(0, 6)
+
+local listFrame = Instance.new("ScrollingFrame", rightCol)
+listFrame.Size = UDim2.new(0.9, 0, 0.7, 0)
+listFrame.CanvasSize = UDim2.new(0,0,0,0)
+listFrame.ScrollBarThickness = 4
+listFrame.BackgroundTransparency = 0.2
+listFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+
+local listLayout = Instance.new("UIListLayout", listFrame)
+listLayout.Padding = UDim.new(0,5)
+
+local function refreshList(filter)
+	for _, child in ipairs(listFrame:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and (filter == "" or plr.Name:lower():find(filter:lower())) then
+			local btn = makeButton(listFrame, plr.Name .. " (Fly OFF, Jump Normal)")
+			local flyState, jumpState = false, 2
+			btn.MouseButton1Click:Connect(function()
+				flyState = not flyState
+				local char = plr.Character
+				if char and char:FindFirstChild("HumanoidRootPart") then
+					local phrp = char.HumanoidRootPart
+					if flyState then
+						local lv2 = Instance.new("LinearVelocity")
+						lv2.MaxForce = 1e9
+						lv2.Attachment = Instance.new("Attachment", phrp)
+						lv2.Parent = phrp
+						local ao2 = Instance.new("AlignOrientation")
+						ao2.MaxTorque = 1e9
+						ao2.Mode = Enum.OrientationAlignmentMode.OneAttachment
+						ao2.Attachment0 = lv2.Attachment
+						ao2.Parent = phrp
+					else
+						for _, obj in ipairs(phrp:GetChildren()) do
+							if obj:IsA("LinearVelocity") or obj:IsA("AlignOrientation") then
+								obj:Destroy()
+							end
+						end
+					end
+				end
+				btn.Text = plr.Name .. " (Fly " .. (flyState and "ON" or "OFF") .. ", Jump " .. levels[jumpState] .. ")"
+			end)
+		end
+	end
+end
+
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	refreshList(searchBox.Text)
+end)
+
+refreshList("")
+
+--// Input (Fly movement)
+local keys = {W=false, A=false, S=false, D=false, Space=false, Shift=false}
+
+UIS.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.W then keys.W = true end
+	if input.KeyCode == Enum.KeyCode.S then keys.S = true end
+	if input.KeyCode == Enum.KeyCode.A then keys.A = true end
+	if input.KeyCode == Enum.KeyCode.D then keys.D = true end
+	if input.KeyCode == Enum.KeyCode.Space then keys.Space = true end
+	if input.KeyCode == Enum.KeyCode.LeftShift then keys.Shift = true end
+	if input.KeyCode == Enum.KeyCode.LeftControl then frame.Visible = not frame.Visible end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then keys.W = false end
+	if input.KeyCode == Enum.KeyCode.S then keys.S = false end
+	if input.KeyCode == Enum.KeyCode.A then keys.A = false end
+	if input.KeyCode == Enum.KeyCode.D then keys.D = false end
+	if input.KeyCode == Enum.KeyCode.Space then keys.Space = false end
+	if input.KeyCode == Enum.KeyCode.LeftShift then keys.Shift = false end
+end)
+
+--// Fly Movement Loop
+RunService.RenderStepped:Connect(function()
+	if flyEnabled and lv and ao then
+		local dir = Vector3.zero
+		if keys.W then dir += Vector3.new(0,0,1) end
+		if keys.S then dir += Vector3.new(0,0,-1) end
+		if keys.A then dir += Vector3.new(-1,0,0) end
+		if keys.D then dir += Vector3.new(1,0,0) end
+		if keys.Space then dir += Vector3.new(0,1,0) end
+		if keys.Shift then dir += Vector3.new(0,-1,0) end
+
+		if dir.Magnitude > 0 then
+			dir = Camera.CFrame:VectorToWorldSpace(dir.Unit)
+			lv.VectorVelocity = dir * speed
+		else
+			lv.VectorVelocity = Vector3.zero
+		end
+
+		ao.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + Camera.CFrame.LookVector)
+	end
+end)
