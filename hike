@@ -1,0 +1,156 @@
+-- FlyLocal.lua  (place in StarterPlayerScripts)
+local Players = game:GetService("Players")
+local UserInput = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local SPEED = 60             -- horizontal speed (studs/sec)
+local ASCEND_SPEED = 40      -- up/down speed (studs/sec)
+local MAX_FORCE = 1e5        -- linear velocity max force (increase if heavy)
+local TOGGLE_KEY = Enum.KeyCode.F
+
+local flying = false
+local lv -- LinearVelocity instance
+local attach -- Attachment used by LinearVelocity
+
+local function createLinearVelocity(hrp)
+    -- create attachment at center of mass (helps stability)
+    attach = hrp:FindFirstChild("FlyAttachment")
+    if not attach then
+        attach = Instance.new("Attachment")
+        attach.Name = "FlyAttachment"
+        attach.Parent = hrp
+        -- try to put attachment at assembly center for stability:
+        pcall(function()
+            attach.WorldPosition = hrp.AssemblyCenterOfMass
+        end)
+    end
+
+    lv = hrp:FindFirstChild("FlyLinearVelocity")
+    if not lv then
+        lv = Instance.new("LinearVelocity")
+        lv.Name = "FlyLinearVelocity"
+        lv.Parent = hrp
+        lv.Attachment0 = attach
+        lv.MaxForce = Vector3.new(MAX_FORCE, MAX_FORCE, MAX_FORCE)
+        lv.RelativeTo = Enum.ActuatorRelativeTo.World
+        lv.VectorVelocity = Vector3.new(0,0,0)
+    end
+end
+
+local function destroyLinearVelocity()
+    if lv and lv.Parent then lv:Destroy() end
+    if attach and attach.Parent then attach:Destroy() end
+    lv = nil
+    attach = nil
+end
+
+local moveInput = Vector3.new(0,0,0)
+local ascend = 0
+
+local function onInputBegan(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if input.KeyCode == TOGGLE_KEY then
+            flying = not flying
+            if flying then
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    createLinearVelocity(hrp)
+                end
+            else
+                destroyLinearVelocity()
+            end
+        end
+    end
+end
+
+local keysDown = {}
+local function refreshMoveVector()
+    local forward = (keysDown.W and 1 or 0) - (keysDown.S and 1 or 0)
+    local right = (keysDown.D and 1 or 0) - (keysDown.A and 1 or 0)
+    moveInput = Vector3.new(right, 0, forward)
+end
+
+local function onInputChanged(input)
+    -- keyboard held logic handled in InputBegan/InputEnded
+end
+
+local function onInputKey(input, down)
+    if input.KeyCode == Enum.KeyCode.W then keysDown.W = down; refreshMoveVector() end
+    if input.KeyCode == Enum.KeyCode.S then keysDown.S = down; refreshMoveVector() end
+    if input.KeyCode == Enum.KeyCode.A then keysDown.A = down; refreshMoveVector() end
+    if input.KeyCode == Enum.KeyCode.D then keysDown.D = down; refreshMoveVector() end
+    if input.KeyCode == Enum.KeyCode.Space then ascend = down and 1 or (keysDown.LeftShift and -1 or 0) end
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        if down then ascend = -1 elseif keysDown.Space then ascend = 1 else ascend = 0 end
+    end
+end
+
+UserInput.InputBegan:Connect(function(input, gp)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        onInputBegan(input, gp)
+        onInputKey(input, true)
+    end
+end)
+
+UserInput.InputEnded:Connect(function(input, gp)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if input.KeyCode == Enum.KeyCode.Space then
+            if keysDown.LeftShift then ascend = -1 else ascend = 0 end
+        elseif input.KeyCode == Enum.KeyCode.LeftShift then
+            if keysDown.Space then ascend = 1 else ascend = 0 end
+        else
+            onInputKey(input, false)
+        end
+    end
+end)
+
+-- Update loop
+RunService.RenderStepped:Connect(function(dt)
+    if not flying or not lv then return end
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local cam = workspace.CurrentCamera
+    if not hrp or not cam then return end
+
+    -- direction in world-space based on camera orientation:
+    local camCFrame = cam.CFrame
+    local forward = (camCFrame.LookVector * -1) -- depending on camera config; adjust if needed
+    local right = camCFrame.RightVector
+
+    -- compute horizontal direction from input
+    local dir = (right * moveInput.X) + (forward * moveInput.Z)
+    if dir.Magnitude > 0 then
+        dir = dir.Unit
+    end
+
+    -- preserve current vertical velocity to let gravity / physics still act
+    local currentY = hrp.AssemblyLinearVelocity and hrp.AssemblyLinearVelocity.Y or 0
+
+    -- vertical control: space / shift
+    local verticalVel = currentY
+    if ascend ~= 0 then
+        verticalVel = ASCEND_SPEED * ascend
+    end
+
+    -- final target velocity
+    local target = (dir * SPEED) + Vector3.new(0, verticalVel, 0)
+
+    -- apply to LinearVelocity
+    lv.VectorVelocity = target
+end)
+
+-- Clean up if character respawns / dies
+player.CharacterRemoving:Connect(function()
+    destroyLinearVelocity()
+end)
+
+player.CharacterAdded:Connect(function(char)
+    -- if flying was on when character died, re-create for the new character
+    if flying then
+        local hrp = char:WaitForChild("HumanoidRootPart", 5)
+        if hrp then createLinearVelocity(hrp) end
+    end
+end)
