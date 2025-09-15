@@ -1,0 +1,198 @@
+-- Smooth Fly GUI with Jump Boost
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "FlyMenu"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 200)
+frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Text = "Smooth Fly Menu"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.Parent = frame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Text = "Toggle Fly"
+toggleBtn.Size = UDim2.new(0.9, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0.05, 0, 0.25, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 250)
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+toggleBtn.Font = Enum.Font.SourceSans
+toggleBtn.TextSize = 18
+toggleBtn.Parent = frame
+
+local jumpBtn = Instance.new("TextButton")
+jumpBtn.Text = "Jump Boost: OFF"
+jumpBtn.Size = UDim2.new(0.9, 0, 0, 30)
+jumpBtn.Position = UDim2.new(0.05, 0, 0.40, 0)
+jumpBtn.BackgroundColor3 = Color3.fromRGB(250, 150, 80)
+jumpBtn.TextColor3 = Color3.new(1,1,1)
+jumpBtn.Font = Enum.Font.SourceSans
+jumpBtn.TextSize = 18
+jumpBtn.Parent = frame
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Text = "Speed: 50"
+speedLabel.Size = UDim2.new(0.9, 0, 0, 25)
+speedLabel.Position = UDim2.new(0.05, 0, 0.60, 0)
+speedLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedLabel.TextColor3 = Color3.new(1,1,1)
+speedLabel.Font = Enum.Font.SourceSans
+speedLabel.TextSize = 16
+speedLabel.Parent = frame
+
+local plusBtn = Instance.new("TextButton")
+plusBtn.Text = "+"
+plusBtn.Size = UDim2.new(0.4, 0, 0, 30)
+plusBtn.Position = UDim2.new(0.05, 0, 0.80, 0)
+plusBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+plusBtn.TextSize = 20
+plusBtn.Parent = frame
+
+local minusBtn = Instance.new("TextButton")
+minusBtn.Text = "-"
+minusBtn.Size = UDim2.new(0.4, 0, 0, 30)
+minusBtn.Position = UDim2.new(0.55, 0, 0.80, 0)
+minusBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+minusBtn.TextSize = 20
+minusBtn.Parent = frame
+
+-- Fly Variables
+local flying = false
+local speed = 50
+local acceleration = 5
+local lv, att, align
+
+-- Jump Boost Variables
+local jumpBoost = false
+local defaultJump = humanoid.UseJumpPower and humanoid.JumpPower or humanoid.JumpHeight
+local boostAmount = defaultJump * 2 -- doubles jump
+
+-- Movement control
+local moveDir = Vector3.zero
+local targetVel = Vector3.zero
+
+-- Fly helpers
+local function createFly()
+	att = Instance.new("Attachment")
+	att.Parent = hrp
+
+	lv = Instance.new("LinearVelocity")
+	lv.MaxForce = 1e6
+	lv.Attachment0 = att
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.Parent = hrp
+
+	align = Instance.new("AlignOrientation")
+	align.Attachment0 = att
+	align.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	align.Responsiveness = 200
+	align.Parent = hrp
+end
+
+local function destroyFly()
+	if lv then lv:Destroy() lv = nil end
+	if att then att:Destroy() att = nil end
+	if align then align:Destroy() align = nil end
+end
+
+local function toggleFly()
+	flying = not flying
+	if flying then
+		createFly()
+		toggleBtn.Text = "Flying (Click to Stop)"
+	else
+		destroyFly()
+		toggleBtn.Text = "Toggle Fly"
+	end
+end
+
+-- GUI buttons
+toggleBtn.MouseButton1Click:Connect(toggleFly)
+
+jumpBtn.MouseButton1Click:Connect(function()
+	jumpBoost = not jumpBoost
+	if jumpBoost then
+		if humanoid.UseJumpPower then
+			humanoid.JumpPower = boostAmount
+		else
+			humanoid.JumpHeight = boostAmount
+		end
+		jumpBtn.Text = "Jump Boost: ON"
+	else
+		if humanoid.UseJumpPower then
+			humanoid.JumpPower = defaultJump
+		else
+			humanoid.JumpHeight = defaultJump
+		end
+		jumpBtn.Text = "Jump Boost: OFF"
+	end
+end)
+
+plusBtn.MouseButton1Click:Connect(function()
+	speed += 10
+	speedLabel.Text = "Speed: " .. speed
+end)
+
+minusBtn.MouseButton1Click:Connect(function()
+	if speed > 10 then
+		speed -= 10
+		speedLabel.Text = "Speed: " .. speed
+	end
+end)
+
+-- Keyboard movement
+UIS.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.W then moveDir = Vector3.new(moveDir.X, moveDir.Y, 1) end
+	if input.KeyCode == Enum.KeyCode.S then moveDir = Vector3.new(moveDir.X, moveDir.Y, -1) end
+	if input.KeyCode == Enum.KeyCode.A then moveDir = Vector3.new(-1, moveDir.Y, moveDir.Z) end
+	if input.KeyCode == Enum.KeyCode.D then moveDir = Vector3.new(1, moveDir.Y, moveDir.Z) end
+	if input.KeyCode == Enum.KeyCode.Space then moveDir = Vector3.new(moveDir.X, 1, moveDir.Z) end
+	if input.KeyCode == Enum.KeyCode.LeftShift then moveDir = Vector3.new(moveDir.X, -1, moveDir.Z) end
+
+	-- Hide/show menu with CTRL
+	if input.KeyCode == Enum.KeyCode.LeftControl then
+		frame.Visible = not frame.Visible
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.S then moveDir = Vector3.new(moveDir.X, moveDir.Y, 0) end
+	if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D then moveDir = Vector3.new(0, moveDir.Y, moveDir.Z) end
+	if input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.LeftShift then moveDir = Vector3.new(moveDir.X, 0, moveDir.Z) end
+end)
+
+-- Smooth fly loop
+RS.RenderStepped:Connect(function(dt)
+	if flying and lv then
+		local cam = workspace.CurrentCamera
+		local dir = (cam.CFrame.RightVector * moveDir.X) + (cam.CFrame.UpVector * moveDir.Y) + (cam.CFrame.LookVector * moveDir.Z)
+		if dir.Magnitude > 0 then dir = dir.Unit end
+		targetVel = dir * speed
+
+		lv.VectorVelocity = lv.VectorVelocity:Lerp(targetVel, math.clamp(acceleration * dt, 0, 1))
+		align.CFrame = cam.CFrame
+	end
+end)
