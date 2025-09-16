@@ -1,0 +1,223 @@
+--// Fly + Admin + ESP Script //--
+
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Fly Variables
+local flying = false
+local speed = 50
+local jumpBoost = 50
+local control = {F = 0, B = 0, L = 0, R = 0}
+local lastControl = {F = 0, B = 0, L = 0, R = 0}
+local flyToggle = false
+
+-- ESP Variables
+local espEnabled = false
+local espObjects = {}
+
+-- UI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+
+-- Main Menu
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 350, 0, 220)
+Frame.Position = UDim2.new(0.5, -175, 0.5, -110)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.Visible = true
+
+-- Tabs
+local TabFrame = Instance.new("Frame", Frame)
+TabFrame.Size = UDim2.new(1, 0, 0, 30)
+TabFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+
+local Tabs = {"Fly", "Players", "ESP"}
+local CurrentTab = "Fly"
+
+local Buttons = {}
+for i, tabName in ipairs(Tabs) do
+    local btn = Instance.new("TextButton", TabFrame)
+    btn.Size = UDim2.new(0, 100, 1, 0)
+    btn.Position = UDim2.new(0, (i - 1) * 100, 0, 0)
+    btn.Text = tabName
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.MouseButton1Click:Connect(function()
+        CurrentTab = tabName
+        for _, f in pairs(Frame:GetChildren()) do
+            if f:IsA("Frame") and f.Name ~= "TabFrame" then
+                f.Visible = (f.Name == tabName)
+            end
+        end
+    end)
+    Buttons[tabName] = btn
+end
+
+-- Fly Tab
+local FlyFrame = Instance.new("Frame", Frame)
+FlyFrame.Size = UDim2.new(1, 0, 1, -30)
+FlyFrame.Position = UDim2.new(0, 0, 0, 30)
+FlyFrame.Name = "Fly"
+
+-- Speed
+local SpeedBox = Instance.new("TextBox", FlyFrame)
+SpeedBox.Size = UDim2.new(0, 150, 0, 30)
+SpeedBox.Position = UDim2.new(0, 10, 0, 20)
+SpeedBox.Text = "Speed: " .. speed
+SpeedBox.FocusLost:Connect(function()
+    local val = tonumber(SpeedBox.Text:match("%d+"))
+    if val then
+        speed = val
+        SpeedBox.Text = "Speed: " .. speed
+    end
+end)
+
+-- Jump Boost
+local JumpBox = Instance.new("TextBox", FlyFrame)
+JumpBox.Size = UDim2.new(0, 150, 0, 30)
+JumpBox.Position = UDim2.new(0, 10, 0, 60)
+JumpBox.Text = "Jump: " .. jumpBoost
+JumpBox.FocusLost:Connect(function()
+    local val = tonumber(JumpBox.Text:match("%d+"))
+    if val then
+        jumpBoost = val
+        JumpBox.Text = "Jump: " .. jumpBoost
+    end
+end)
+
+-- Toggle Fly Button
+local FlyBtn = Instance.new("TextButton", FlyFrame)
+FlyBtn.Size = UDim2.new(0, 120, 0, 30)
+FlyBtn.Position = UDim2.new(0, 10, 0, 100)
+FlyBtn.Text = "Toggle Fly"
+FlyBtn.MouseButton1Click:Connect(function()
+    flyToggle = not flyToggle
+    if flyToggle then
+        startFly(LocalPlayer.Character)
+    else
+        stopFly(LocalPlayer.Character)
+    end
+end)
+
+-- Players Tab
+local PlayerFrame = Instance.new("Frame", Frame)
+PlayerFrame.Size = UDim2.new(1, 0, 1, -30)
+PlayerFrame.Position = UDim2.new(0, 0, 0, 30)
+PlayerFrame.Name = "Players"
+PlayerFrame.Visible = false
+
+local UIList = Instance.new("UIListLayout", PlayerFrame)
+UIList.Padding = UDim.new(0, 5)
+
+local function refreshPlayers()
+    for _, child in ipairs(PlayerFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local btn = Instance.new("TextButton", PlayerFrame)
+        btn.Size = UDim2.new(1, -10, 0, 30)
+        btn.Text = "Give Fly: " .. plr.Name
+        btn.MouseButton1Click:Connect(function()
+            if plr.Character then
+                startFly(plr.Character)
+            end
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(refreshPlayers)
+Players.PlayerRemoving:Connect(refreshPlayers)
+refreshPlayers()
+
+-- ESP Tab
+local ESPFrame = Instance.new("Frame", Frame)
+ESPFrame.Size = UDim2.new(1, 0, 1, -30)
+ESPFrame.Position = UDim2.new(0, 0, 0, 30)
+ESPFrame.Name = "ESP"
+ESPFrame.Visible = false
+
+local ESPBtn = Instance.new("TextButton", ESPFrame)
+ESPBtn.Size = UDim2.new(0, 120, 0, 30)
+ESPBtn.Position = UDim2.new(0, 10, 0, 20)
+ESPBtn.Text = "Toggle ESP"
+ESPBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    if espEnabled then
+        enableESP()
+    else
+        disableESP()
+    end
+end)
+
+-- Fly Functions
+function startFly(char)
+    if not char or flying then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    flying = true
+    RunService.Heartbeat:Connect(function()
+        if flying and hrp then
+            local cf = Camera.CFrame
+            local move = (cf.LookVector * (control.F - control.B) + cf.RightVector * (control.R - control.L))
+            hrp.Velocity = move * speed + Vector3.new(0, control.Up - control.Down, 0) * speed
+        end
+    end)
+end
+
+function stopFly(char)
+    flying = false
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end
+
+-- ESP Functions
+function enableESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local box = Instance.new("BoxHandleAdornment", plr.Character)
+            box.Size = Vector3.new(4, 6, 1)
+            box.Color3 = Color3.new(1, 0, 0)
+            box.Transparency = 0.5
+            box.AlwaysOnTop = true
+            box.Adornee = plr.Character:FindFirstChild("HumanoidRootPart")
+            espObjects[plr] = box
+        end
+    end
+end
+
+function disableESP()
+    for plr, box in pairs(espObjects) do
+        if box then box:Destroy() end
+    end
+    espObjects = {}
+end
+
+-- Input Handling
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.W then control.F = 1 end
+    if input.KeyCode == Enum.KeyCode.S then control.B = 1 end
+    if input.KeyCode == Enum.KeyCode.A then control.L = 1 end
+    if input.KeyCode == Enum.KeyCode.D then control.R = 1 end
+    if input.KeyCode == Enum.KeyCode.Space then control.Up = speed end
+    if input.KeyCode == Enum.KeyCode.LeftShift then control.Down = speed end
+    if input.KeyCode == Enum.KeyCode.LeftControl then
+        Frame.Visible = not Frame.Visible
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.W then control.F = 0 end
+    if input.KeyCode == Enum.KeyCode.S then control.B = 0 end
+    if input.KeyCode == Enum.KeyCode.A then control.L = 0 end
+    if input.KeyCode == Enum.KeyCode.D then control.R = 0 end
+    if input.KeyCode == Enum.KeyCode.Space then control.Up = 0 end
+    if input.KeyCode == Enum.KeyCode.LeftShift then control.Down = 0 end
+end)
