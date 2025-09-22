@@ -4,67 +4,9 @@ local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
 
 local player = Players.LocalPlayer
--- Added character reset handling variables
-local char, hrp, humanoid
-local connections = {}
-
--- Added hotkey system variables
-local currentHotkey = Enum.KeyCode.CapsLock -- Default hotkey
-local hotkeyNames = {
-    [Enum.KeyCode.CapsLock] = "CapsLock",
-    [Enum.KeyCode.F] = "F",
-    [Enum.KeyCode.G] = "G",
-    [Enum.KeyCode.H] = "H",
-    [Enum.KeyCode.J] = "J",
-    [Enum.KeyCode.K] = "K",
-    [Enum.KeyCode.L] = "L",
-    [Enum.KeyCode.Z] = "Z",
-    [Enum.KeyCode.X] = "X",
-    [Enum.KeyCode.C] = "C",
-    [Enum.KeyCode.V] = "V",
-    [Enum.KeyCode.B] = "B",
-    [Enum.KeyCode.N] = "N",
-    [Enum.KeyCode.M] = "M"
-}
-local availableHotkeys = {
-    Enum.KeyCode.CapsLock,
-    Enum.KeyCode.F,
-    Enum.KeyCode.G,
-    Enum.KeyCode.H,
-    Enum.KeyCode.J,
-    Enum.KeyCode.K,
-    Enum.KeyCode.L,
-    Enum.KeyCode.Z,
-    Enum.KeyCode.X,
-    Enum.KeyCode.C,
-    Enum.KeyCode.V,
-    Enum.KeyCode.B,
-    Enum.KeyCode.N,
-    Enum.KeyCode.M
-}
-local currentHotkeyIndex = 1
-
--- Function to initialize character references
-local function initializeCharacter()
-	char = player.Character or player.CharacterAdded:Wait()
-	hrp = char:WaitForChild("HumanoidRootPart")
-	humanoid = char:WaitForChild("Humanoid")
-	
-	-- Clean up old fly objects if they exist
-	if flying then
-		destroyFly(player)
-		flying = false
-		toggleBtn.Text = "Toggle Fly"
-	end
-end
-
--- Initialize character on script start
-initializeCharacter()
-
--- Handle character respawning
-player.CharacterAdded:Connect(function()
-	initializeCharacter()
-end)
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui")
@@ -72,9 +14,9 @@ gui.Name = "FlyMenu"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- Expanded frame size to accommodate settings section
+-- Expanded frame size to accommodate admin features
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 420, 0, 400)
+frame.Size = UDim2.new(0, 420, 0, 320)
 frame.Position = UDim2.new(0.05, 0, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BorderSizePixel = 0
@@ -82,9 +24,9 @@ frame.Active = true
 frame.Draggable = true
 frame.Parent = gui
 
--- Updated title to reflect admin features and new toggle key
+-- Updated title to reflect admin features
 local title = Instance.new("TextLabel")
-title.Text = "Smooth Fly & Admin Panel (RightCtrl to toggle)"
+title.Text = "Smooth Fly & Admin Panel (Ctrl to toggle)"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -127,7 +69,7 @@ toggleBtn.Parent = leftCol
 local jumpBtn = Instance.new("TextButton")
 jumpBtn.Text = "Jump Boost: Normal"
 jumpBtn.Size = UDim2.new(0.9, 0, 0, 30)
-jumpBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
+jumpBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
 jumpBtn.BackgroundColor3 = Color3.fromRGB(250, 150, 80)
 jumpBtn.TextColor3 = Color3.new(1,1,1)
 jumpBtn.Font = Enum.Font.SourceSans
@@ -137,7 +79,7 @@ jumpBtn.Parent = leftCol
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Text = "Speed: 50"
 speedLabel.Size = UDim2.new(0.9, 0, 0, 25)
-speedLabel.Position = UDim2.new(0.05, 0, 0.25, 0)
+speedLabel.Position = UDim2.new(0.05, 0, 0.35, 0)
 speedLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 speedLabel.TextColor3 = Color3.new(1,1,1)
 speedLabel.Font = Enum.Font.SourceSans
@@ -147,7 +89,7 @@ speedLabel.Parent = leftCol
 local plusBtn = Instance.new("TextButton")
 plusBtn.Text = "+"
 plusBtn.Size = UDim2.new(0.4, 0, 0, 30)
-plusBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
+plusBtn.Position = UDim2.new(0.05, 0, 0.5, 0)
 plusBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
 plusBtn.TextSize = 20
 plusBtn.Parent = leftCol
@@ -155,10 +97,8 @@ plusBtn.Parent = leftCol
 local minusBtn = Instance.new("TextButton")
 minusBtn.Text = "-"
 minusBtn.Size = UDim2.new(0.4, 0, 0, 30)
-minusBtn.Position = UDim2.new(0.55, 0, 0.35, 0)
+minusBtn.Position = UDim2.new(0.55, 0, 0.5, 0)
 minusBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
-minusBtn.TextColor3 = Color3.new(1,1,1)
-minusBtn.Font = Enum.Font.SourceSans
 minusBtn.TextSize = 20
 minusBtn.Parent = leftCol
 
@@ -166,71 +106,21 @@ minusBtn.Parent = leftCol
 local espBtn = Instance.new("TextButton")
 espBtn.Text = "ESP: OFF"
 espBtn.Size = UDim2.new(0.9, 0, 0, 30)
-espBtn.Position = UDim2.new(0.05, 0, 0.5, 0)
+espBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
 espBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 250)
 espBtn.TextColor3 = Color3.new(1,1,1)
-espBtn.Font = Enum.Font.SourceSans
-espBtn.TextSize = 16
 espBtn.Parent = leftCol
 
--- Added no damage toggle variables
-local noDamageEnabled = false
-
--- Added no collision toggle variables
-local noCollisionEnabled = false
-
--- Added no damage button after ESP button
-local noDamageBtn = Instance.new("TextButton")
-noDamageBtn.Text = "No Damage: OFF"
-noDamageBtn.Size = UDim2.new(0.9, 0, 0, 30)
-noDamageBtn.Position = UDim2.new(0.05, 0, 0.58, 0)
-noDamageBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 150)
-noDamageBtn.TextColor3 = Color3.new(1,1,1)
-noDamageBtn.Font = Enum.Font.SourceSans
-noDamageBtn.TextSize = 16
-noDamageBtn.Parent = leftCol
-
--- Added no collision button after no damage button
+-- Added no collision button
 local noCollisionBtn = Instance.new("TextButton")
 noCollisionBtn.Text = "No Collision: OFF"
 noCollisionBtn.Size = UDim2.new(0.9, 0, 0, 30)
-noCollisionBtn.Position = UDim2.new(0.05, 0, 0.66, 0)
-noCollisionBtn.BackgroundColor3 = Color3.fromRGB(150, 200, 100)
+noCollisionBtn.Position = UDim2.new(0.05, 0, 0.8, 0)
+noCollisionBtn.BackgroundColor3 = Color3.fromRGB(80, 250, 150)
 noCollisionBtn.TextColor3 = Color3.new(1,1,1)
 noCollisionBtn.Font = Enum.Font.SourceSans
-noCollisionBtn.TextSize = 16
+noCollisionBtn.TextSize = 18
 noCollisionBtn.Parent = leftCol
-
--- Added hotkey settings section
-local hotkeyLabel = Instance.new("TextLabel")
-hotkeyLabel.Text = "Flight Hotkey Settings"
-hotkeyLabel.Size = UDim2.new(0.9, 0, 0, 25)
-hotkeyLabel.Position = UDim2.new(0.05, 0, 0.76, 0)
-hotkeyLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-hotkeyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-hotkeyLabel.Font = Enum.Font.SourceSansBold
-hotkeyLabel.TextSize = 14
-hotkeyLabel.Parent = leftCol
-
-local hotkeyBtn = Instance.new("TextButton")
-hotkeyBtn.Text = "Hotkey: " .. hotkeyNames[currentHotkey]
-hotkeyBtn.Size = UDim2.new(0.9, 0, 0, 30)
-hotkeyBtn.Position = UDim2.new(0.05, 0, 0.86, 0)
-hotkeyBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 200)
-hotkeyBtn.TextColor3 = Color3.new(1,1,1)
-hotkeyBtn.Font = Enum.Font.SourceSans
-hotkeyBtn.TextSize = 16
-hotkeyBtn.Parent = leftCol
-
-local hotkeyInfo = Instance.new("TextLabel")
-hotkeyInfo.Text = "Press to cycle through available keys"
-hotkeyInfo.Size = UDim2.new(0.9, 0, 0, 20)
-hotkeyInfo.Position = UDim2.new(0.05, 0, 0.99, 0)
-hotkeyInfo.BackgroundTransparency = 1
-hotkeyInfo.TextColor3 = Color3.fromRGB(180, 180, 180)
-hotkeyInfo.Font = Enum.Font.SourceSans
-hotkeyInfo.TextSize = 12
-hotkeyInfo.Parent = leftCol
 
 -- Right column for admin player list
 local rightCol = Instance.new("Frame")
@@ -269,14 +159,14 @@ local keys = {W=false,A=false,S=false,D=false,Space=false,Shift=false}
 local playerFlyStates = {}
 local playerJumpStates = {}
 
--- Updated jump boost initialization to be dynamic
-local function getDefaultJump()
-	if not humanoid then return 50 end
-	return humanoid.UseJumpPower and humanoid.JumpPower or humanoid.JumpHeight
-end
+-- Added no collision variables
+local noCollisionEnabled = false
 
-local levels = {"Normal","High"}
-local jIndex = 1
+-- Jump boost levels system
+local defaultJump = humanoid.UseJumpPower and humanoid.JumpPower or humanoid.JumpHeight
+local levels = {"Low","Normal","High"}
+local boosts = {defaultJump*0.7, defaultJump, defaultJump*1.8}
+local jIndex = 2
 
 -- ESP variables
 local espEnabled = false
@@ -289,11 +179,6 @@ local targetVel = Vector3.zero
 -- Enhanced fly helpers for multi-player support
 local function createFly(targetPlayer)
 	if targetPlayer == player then
-		-- Added safety checks for character references
-		if not char or not hrp then
-			initializeCharacter()
-		end
-		
 		-- Original single-player fly logic for local player
 		att = Instance.new("Attachment")
 		att.Parent = hrp
@@ -348,11 +233,6 @@ local function destroyFly(targetPlayer)
 end
 
 local function toggleFly()
-	-- Added character validation before toggling fly
-	if not char or not hrp then
-		initializeCharacter()
-	end
-	
 	flying = not flying
 	if flying then
 		createFly(player)
@@ -369,11 +249,6 @@ local function applyJumpBoost(targetPlayer, levelIndex)
 	if not tChar then return end
 	local tHum = tChar:FindFirstChildOfClass("Humanoid")
 	if not tHum then return end
-	
-	-- Dynamic boost calculation based on current character (removed "Low" option)
-	local defaultJump = tHum.UseJumpPower and tHum.JumpPower or tHum.JumpHeight
-	local boosts = {defaultJump, defaultJump*1.8} -- Normal, High only
-	
 	if tHum.UseJumpPower then
 		tHum.JumpPower = boosts[levelIndex]
 	else
@@ -401,149 +276,90 @@ local function toggleESP()
 	end
 end
 
+-- Added no collision toggle function
+local function toggleNoCollision()
+	noCollisionEnabled = not noCollisionEnabled
+	noCollisionBtn.Text = "No Collision: " .. (noCollisionEnabled and "ON" or "OFF")
+	
+	if char then
+		for _, part in pairs(char:GetChildren()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				part.CanCollide = not noCollisionEnabled
+			end
+		end
+	end
+end
+
 -- Player list management functions
 local function createPlayerEntry(p)
 	local entry = Instance.new("Frame")
-	entry.Size = UDim2.new(1, 0, 0, 70)
-	entry.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-	entry.BorderSizePixel = 1
-	entry.BorderColor3 = Color3.fromRGB(70, 70, 70)
+	entry.Size = UDim2.new(1, 0, 0, 60)
+	entry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 	entry.Parent = playerList
 
-	-- Added player avatar/icon placeholder
-	local avatar = Instance.new("Frame")
-	avatar.Size = UDim2.new(0, 50, 0, 50)
-	avatar.Position = UDim2.new(0, 8, 0, 10)
-	avatar.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-	avatar.BorderSizePixel = 0
-	avatar.Parent = entry
-	
-	local avatarCorner = Instance.new("UICorner")
-	avatarCorner.CornerRadius = UDim.new(0, 25)
-	avatarCorner.Parent = avatar
-	
-	local avatarText = Instance.new("TextLabel")
-	avatarText.Size = UDim2.new(1, 0, 1, 0)
-	avatarText.BackgroundTransparency = 1
-	avatarText.Text = string.sub(p.Name, 1, 2):upper()
-	avatarText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	avatarText.Font = Enum.Font.SourceSansBold
-	avatarText.TextSize = 18
-	avatarText.Parent = avatar
-
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(0, 120, 0, 25)
-	nameLabel.Position = UDim2.new(0, 65, 0, 8)
+	nameLabel.Size = UDim2.new(0.6, -6, 1, 0)
+	nameLabel.Position = UDim2.new(0, 6, 0, 0)
 	nameLabel.Text = p.Name
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.Font = Enum.Font.SourceSans
 	nameLabel.TextSize = 16
 	nameLabel.Parent = entry
-	
-	-- Added status indicator
-	local statusLabel = Instance.new("TextLabel")
-	statusLabel.Size = UDim2.new(0, 120, 0, 20)
-	statusLabel.Position = UDim2.new(0, 65, 0, 30)
-	statusLabel.Text = "Status: " .. (playerFlyStates[p] and "Flying" or "Grounded")
-	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.TextColor3 = playerFlyStates[p] and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(180, 180, 180)
-	statusLabel.Font = Enum.Font.SourceSans
-	statusLabel.TextSize = 12
-	statusLabel.Parent = entry
 
 	local flyBtn = Instance.new("TextButton")
-	flyBtn.Size = UDim2.new(0, 45, 0, 25)
-	flyBtn.Position = UDim2.new(1, -50, 0, 8)
-	flyBtn.Text = playerFlyStates[p] and "Stop" or "Fly"
-	flyBtn.BackgroundColor3 = playerFlyStates[p] and Color3.fromRGB(200, 80, 80) or Color3.fromRGB(80, 150, 250)
+	flyBtn.Size = UDim2.new(0.38, -6, 0.4, -4)
+	flyBtn.Position = UDim2.new(0.62, 0, 0.1, 0)
+	flyBtn.Text = playerFlyStates[p] and "Stop Fly" or "Start Fly"
+	flyBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 250)
 	flyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	flyBtn.Font = Enum.Font.SourceSansBold
-	flyBtn.TextSize = 12
+	flyBtn.Font = Enum.Font.SourceSans
+	flyBtn.TextSize = 14
 	flyBtn.Parent = entry
-	
-	local flyCorner = Instance.new("UICorner")
-	flyCorner.CornerRadius = UDim.new(0, 4)
-	flyCorner.Parent = flyBtn
 
 	local jumpBtn2 = Instance.new("TextButton")
-	jumpBtn2.Size = UDim2.new(0, 45, 0, 25)
-	jumpBtn2.Position = UDim2.new(1, -50, 0, 37)
-	jumpBtn2.Text = "Jump"
+	jumpBtn2.Size = UDim2.new(0.38, -6, 0.4, -4)
+	jumpBtn2.Position = UDim2.new(0.62, 0, 0.55, 0)
+	jumpBtn2.Text = "Cycle Jump"
 	jumpBtn2.BackgroundColor3 = Color3.fromRGB(250, 150, 80)
 	jumpBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
-	jumpBtn2.Font = Enum.Font.SourceSansBold
-	jumpBtn2.TextSize = 12
+	jumpBtn2.Font = Enum.Font.SourceSans
+	jumpBtn2.TextSize = 14
 	jumpBtn2.Parent = entry
-	
-	local jumpCorner = Instance.new("UICorner")
-	jumpCorner.CornerRadius = UDim.new(0, 4)
-	jumpCorner.Parent = jumpBtn2
 
 	flyBtn.MouseButton1Click:Connect(function()
 		if playerFlyStates[p] then
 			destroyFly(p)
-			flyBtn.Text = "Fly"
-			flyBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 250)
-			statusLabel.Text = "Status: Grounded"
-			statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+			flyBtn.Text = "Start Fly"
 		else
 			createFly(p)
-			flyBtn.Text = "Stop"
-			flyBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-			statusLabel.Text = "Status: Flying"
-			statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+			flyBtn.Text = "Stop Fly"
 		end
 	end)
 
 	jumpBtn2.MouseButton1Click:Connect(function()
-		local current = playerJumpStates[p] or 1
+		local current = playerJumpStates[p] or 2
 		local nextIdx = current % #levels + 1
 		applyJumpBoost(p, nextIdx)
-		jumpBtn2.Text = levels[nextIdx]
+		jumpBtn2.Text = "Jump: " .. levels[nextIdx]
 	end)
 
 	return entry
 end
 
--- Improved refresh function with better performance
 local function refreshPlayerList(filter)
-	-- Clear existing entries
-	for _, child in pairs(playerList:GetChildren()) do
-		if child:IsA("Frame") then
-			child:Destroy()
-		end
-	end
-	
+	playerList:ClearAllChildren()
 	local y = 0
-	local playerCount = 0
-	
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= player then
 			if not filter or filter == "" or p.Name:lower():find(filter:lower()) then
 				createPlayerEntry(p)
-				y = y + 76
-				playerCount = playerCount + 1
+				y = y + 66
 			end
 		end
 	end
-	
 	playerList.CanvasSize = UDim2.new(0, 0, 0, y)
-	
-	-- Added loading indicator when no players found
-	if playerCount == 0 then
-		local noPlayersLabel = Instance.new("TextLabel")
-		noPlayersLabel.Size = UDim2.new(1, 0, 0, 50)
-		noPlayersLabel.BackgroundTransparency = 1
-		noPlayersLabel.Text = filter and filter ~= "" and "No players found" or "No other players online"
-		noPlayersLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-		noPlayersLabel.Font = Enum.Font.SourceSansItalic
-		noPlayersLabel.TextSize = 14
-		noPlayersLabel.Parent = playerList
-		playerList.CanvasSize = UDim2.new(0, 0, 0, 50)
-	end
 end
 
 -- GUI buttons
@@ -551,11 +367,6 @@ toggleBtn.MouseButton1Click:Connect(toggleFly)
 
 -- Enhanced jump button for cycling levels
 jumpBtn.MouseButton1Click:Connect(function()
-	-- Added character validation for jump boost
-	if not char or not humanoid then
-		initializeCharacter()
-	end
-	
 	jIndex = jIndex % #levels + 1
 	applyJumpBoost(player, jIndex)
 	jumpBtn.Text = "Jump Boost: " .. levels[jIndex]
@@ -579,61 +390,70 @@ end)
 -- ESP button connection
 espBtn.MouseButton1Click:Connect(toggleESP)
 
--- No damage toggle function
-local function toggleNoDamage()
-	noDamageEnabled = not noDamageEnabled
-	noDamageBtn.Text = "No Damage: " .. (noDamageEnabled and "ON" or "OFF")
-	
-	if noDamageEnabled then
-		-- Disable fall damage and collision damage
-		if humanoid then
-			humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-				if noDamageEnabled and humanoid.Health < humanoid.MaxHealth then
-					humanoid.Health = humanoid.MaxHealth
-				end
-			end)
-		end
-	end
-end
-
--- Added no collision toggle function
-local function toggleNoCollision()
-	noCollisionEnabled = not noCollisionEnabled
-	noCollisionBtn.Text = "No Collision: " .. (noCollisionEnabled and "ON" or "OFF")
-	
-	if not char then return end
-	
-	-- Toggle collision for all character parts
-	for _, part in pairs(char:GetChildren()) do
-		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-			part.CanCollide = not noCollisionEnabled
-		end
-	end
-	
-	-- Handle HumanoidRootPart separately to maintain some physics
-	local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-	if humanoidRootPart then
-		humanoidRootPart.CanCollide = not noCollisionEnabled
-	end
-end
-
--- Added no damage button connection
-noDamageBtn.MouseButton1Click:Connect(toggleNoDamage)
-
 -- Added no collision button connection
 noCollisionBtn.MouseButton1Click:Connect(toggleNoCollision)
+
+-- Search box functionality
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	refreshPlayerList(searchBox.Text)
+end)
+
+-- Enhanced keyboard movement with keys tracking
+UIS.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.W then 
+		moveDir = Vector3.new(moveDir.X, moveDir.Y, 1)
+		keys.W = true
+	end
+	if input.KeyCode == Enum.KeyCode.S then 
+		moveDir = Vector3.new(moveDir.X, moveDir.Y, -1)
+		keys.S = true
+	end
+	if input.KeyCode == Enum.KeyCode.A then 
+		moveDir = Vector3.new(-1, moveDir.Y, moveDir.Z)
+		keys.A = true
+	end
+	if input.KeyCode == Enum.KeyCode.D then 
+		moveDir = Vector3.new(1, moveDir.Y, moveDir.Z)
+		keys.D = true
+	end
+	if input.KeyCode == Enum.KeyCode.Space then 
+		moveDir = Vector3.new(moveDir.X, 1, moveDir.Z)
+		keys.Space = true
+	end
+	if input.KeyCode == Enum.KeyCode.LeftShift then 
+		moveDir = Vector3.new(moveDir.X, -1, moveDir.Z)
+		keys.Shift = true
+	end
+
+	-- Hide/show menu with CTRL
+	if input.KeyCode == Enum.KeyCode.LeftControl then
+		frame.Visible = not frame.Visible
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.S then 
+		moveDir = Vector3.new(moveDir.X, moveDir.Y, 0)
+		keys.W = false
+		keys.S = false
+	end
+	if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D then 
+		moveDir = Vector3.new(0, moveDir.Y, moveDir.Z)
+		keys.A = false
+		keys.D = false
+	end
+	if input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.LeftShift then 
+		moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+		keys.Space = false
+		keys.Shift = false
+	end
+end)
 
 -- Enhanced fly loop supporting multiple players
 RS.RenderStepped:Connect(function(dt)
 	-- Handle local player flight
-	if flying and lv and hrp then
-		-- Added safety check for hrp existence
-		if not hrp.Parent then
-			-- Character was destroyed, reinitialize
-			initializeCharacter()
-			return
-		end
-		
+	if flying and lv then
 		local cam = workspace.CurrentCamera
 		local dir = (cam.CFrame.RightVector * moveDir.X) + (cam.CFrame.UpVector * moveDir.Y) + (cam.CFrame.LookVector * moveDir.Z)
 		if dir.Magnitude > 0 then dir = dir.Unit end
@@ -692,64 +512,5 @@ Players.PlayerRemoving:Connect(function(p)
 	refreshPlayerList(searchBox.Text)
 end)
 
--- Added hotkey cycling function
-local function cycleHotkey()
-    currentHotkeyIndex = currentHotkeyIndex % #availableHotkeys + 1
-    currentHotkey = availableHotkeys[currentHotkeyIndex]
-    hotkeyBtn.Text = "Hotkey: " .. hotkeyNames[currentHotkey]
-end
-
--- Enhanced hotkey button connection
-hotkeyBtn.MouseButton1Click:Connect(cycleHotkey)
-
 -- Initialize player list
 refreshPlayerList()
-
--- Updated input handling to use RightControl for menu toggle and added flight hotkey
-UIS.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	
-	-- Menu toggle with RightControl instead of LeftControl
-	if input.KeyCode == Enum.KeyCode.RightControl then
-		frame.Visible = not frame.Visible
-	end
-	
-	-- Flight toggle with customizable hotkey
-	if input.KeyCode == currentHotkey then
-		toggleFly()
-	end
-	
-	-- Movement keys for flight
-	if input.KeyCode == Enum.KeyCode.W then keys.W = true end
-	if input.KeyCode == Enum.KeyCode.A then keys.A = true end
-	if input.KeyCode == Enum.KeyCode.S then keys.S = true end
-	if input.KeyCode == Enum.KeyCode.D then keys.D = true end
-	if input.KeyCode == Enum.KeyCode.Space then keys.Space = true end
-	if input.KeyCode == Enum.KeyCode.LeftShift then keys.Shift = true end
-	
-	-- Update movement direction
-	moveDir = Vector3.new(
-		(keys.D and 1 or 0) - (keys.A and 1 or 0),
-		(keys.Space and 1 or 0) - (keys.Shift and 1 or 0),
-		(keys.S and 1 or 0) - (keys.W and 1 or 0)
-	)
-end)
-
-UIS.InputEnded:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	
-	-- Movement keys for flight
-	if input.KeyCode == Enum.KeyCode.W then keys.W = false end
-	if input.KeyCode == Enum.KeyCode.A then keys.A = false end
-	if input.KeyCode == Enum.KeyCode.S then keys.S = false end
-	if input.KeyCode == Enum.KeyCode.D then keys.D = false end
-	if input.KeyCode == Enum.KeyCode.Space then keys.Space = false end
-	if input.KeyCode == Enum.KeyCode.LeftShift then keys.Shift = false end
-	
-	-- Update movement direction
-	moveDir = Vector3.new(
-		(keys.D and 1 or 0) - (keys.A and 1 or 0),
-		(keys.Space and 1 or 0) - (keys.Shift and 1 or 0),
-		(keys.S and 1 or 0) - (keys.W and 1 or 0)
-	)
-end)
