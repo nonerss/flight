@@ -1,0 +1,688 @@
+-- Smooth Fly GUI with Jump Boost, Admin Features, Noclip, and God Mode Panel (Ctrl to toggle)
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "FlyMenu"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Expanded frame size to accommodate noclip button
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 420, 0, 390) -- Increased height for god mode button
+frame.Position = UDim2.new(0.05, 0, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- Updated title to include noclip feature
+local title = Instance.new("TextLabel")
+title.Text = "Smooth Fly, Admin, Noclip & God Mode Panel (Ctrl to toggle)" -- Updated title
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.Parent = frame
+
+-- Added close button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Text = "X"
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 16
+closeBtn.Parent = frame
+
+closeBtn.MouseButton1Click:Connect(function()
+	frame.Visible = false
+end)
+
+-- Left column for personal controls
+local leftCol = Instance.new("Frame")
+leftCol.Size = UDim2.new(0, 200, 1, -40)
+leftCol.Position = UDim2.new(0, 10, 0, 40)
+leftCol.BackgroundTransparency = 1
+leftCol.Parent = frame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Text = "Toggle Fly"
+toggleBtn.Size = UDim2.new(0.9, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0.05, 0, 0.05, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 250)
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+toggleBtn.Font = Enum.Font.SourceSans
+toggleBtn.TextSize = 18
+toggleBtn.Parent = leftCol
+
+local jumpBtn = Instance.new("TextButton")
+jumpBtn.Text = "Jump Boost: Normal"
+jumpBtn.Size = UDim2.new(0.9, 0, 0, 30)
+jumpBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
+jumpBtn.BackgroundColor3 = Color3.fromRGB(250, 150, 80)
+jumpBtn.TextColor3 = Color3.new(1,1,1)
+jumpBtn.Font = Enum.Font.SourceSans
+jumpBtn.TextSize = 18
+jumpBtn.Parent = leftCol
+
+-- Added noclip toggle button
+local noclipBtn = Instance.new("TextButton")
+noclipBtn.Text = "Noclip: OFF"
+noclipBtn.Size = UDim2.new(0.9, 0, 0, 30)
+noclipBtn.Position = UDim2.new(0.05, 0, 0.25, 0)
+noclipBtn.BackgroundColor3 = Color3.fromRGB(150, 250, 150)
+noclipBtn.TextColor3 = Color3.new(1,1,1)
+noclipBtn.Font = Enum.Font.SourceSans
+noclipBtn.TextSize = 18
+noclipBtn.Parent = leftCol
+
+-- Added god mode toggle button
+local godModeBtn = Instance.new("TextButton")
+godModeBtn.Text = "God Mode: OFF"
+godModeBtn.Size = UDim2.new(0.9, 0, 0, 30)
+godModeBtn.Position = UDim2.new(0.05, 0, 0.35, 0) -- Positioned after noclip button
+godModeBtn.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Golden color for god mode
+godModeBtn.TextColor3 = Color3.new(0, 0, 0) -- Black text for contrast
+godModeBtn.Font = Enum.Font.SourceSans
+godModeBtn.TextSize = 18
+godModeBtn.Parent = leftCol
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Text = "Speed: 50"
+speedLabel.Size = UDim2.new(0.9, 0, 0, 25)
+speedLabel.Position = UDim2.new(0.05, 0, 0.5, 0) -- Moved down to accommodate god mode
+speedLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedLabel.TextColor3 = Color3.new(1,1,1)
+speedLabel.Font = Enum.Font.SourceSans
+speedLabel.TextSize = 16
+speedLabel.Parent = leftCol
+
+local plusBtn = Instance.new("TextButton")
+plusBtn.Text = "+"
+plusBtn.Size = UDim2.new(0.4, 0, 0, 30)
+plusBtn.Position = UDim2.new(0.05, 0, 0.65, 0) -- Moved down
+plusBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+plusBtn.TextSize = 20
+plusBtn.Parent = leftCol
+
+local minusBtn = Instance.new("TextButton")
+minusBtn.Text = "-"
+minusBtn.Size = UDim2.new(0.4, 0, 0, 30)
+minusBtn.Position = UDim2.new(0.55, 0, 0.65, 0) -- Moved down
+minusBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+minusBtn.TextSize = 20
+minusBtn.Parent = leftCol
+
+-- ESP button moved down to accommodate god mode
+local espBtn = Instance.new("TextButton")
+espBtn.Text = "ESP: OFF"
+espBtn.Size = UDim2.new(0.9, 0, 0, 30)
+espBtn.Position = UDim2.new(0.05, 0, 0.8, 0) -- Moved down further
+espBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 250)
+espBtn.TextColor3 = Color3.new(1,1,1)
+espBtn.Parent = leftCol
+
+-- Right column for admin player list
+local rightCol = Instance.new("Frame")
+rightCol.Size = UDim2.new(0, 200, 1, -40)
+rightCol.Position = UDim2.new(0, 210, 0, 40)
+rightCol.BackgroundTransparency = 1
+rightCol.Parent = frame
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(0.9, 0, 0, 30)
+searchBox.Position = UDim2.new(0.05, 0, 0, 0)
+searchBox.PlaceholderText = "Search player..."
+searchBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+searchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchBox.Font = Enum.Font.SourceSans
+searchBox.TextSize = 16
+searchBox.Parent = rightCol
+
+local playerList = Instance.new("ScrollingFrame")
+playerList.Size = UDim2.new(0.9, 0, 1, -40)
+playerList.Position = UDim2.new(0.05, 0, 0, 40)
+playerList.BackgroundTransparency = 1
+playerList.ScrollBarThickness = 6
+playerList.Parent = rightCol
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 6)
+listLayout.Parent = playerList
+
+-- Added noclip variables and functionality
+local noclipEnabled = false
+local originalCollisionStates = {}
+
+-- Added god mode variables and functionality
+local godModeEnabled = false
+local godModeConnection = nil
+local playerGodModeStates = {}
+
+-- Enhanced fly variables for multi-player support
+local flying = false
+local speed = 50
+local acceleration = 5
+local lv, att, align
+local keys = {W=false,A=false,S=false,D=false,Space=false,Shift=false}
+local playerFlyStates = {}
+local playerJumpStates = {}
+
+-- Jump boost levels system
+local defaultJump = humanoid.UseJumpPower and humanoid.JumpPower or humanoid.JumpHeight
+local levels = {"Low","Normal","High"}
+local boosts = {defaultJump*0.7, defaultJump, defaultJump*1.8}
+local jIndex = 2
+
+-- ESP variables
+local espEnabled = false
+local espObjects = {}
+
+-- Movement control
+local moveDir = Vector3.zero
+local targetVel = Vector3.zero
+
+-- Enhanced fly helpers for multi-player support
+local function createFly(targetPlayer)
+	if targetPlayer == player then
+		-- Original single-player fly logic for local player
+		att = Instance.new("Attachment")
+		att.Parent = hrp
+
+		lv = Instance.new("LinearVelocity")
+		lv.MaxForce = 2e6
+		lv.Attachment0 = att
+		lv.RelativeTo = Enum.ActuatorRelativeTo.World
+		lv.Parent = hrp
+
+		align = Instance.new("AlignOrientation")
+		align.Attachment0 = att
+		align.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		align.Responsiveness = 300
+		align.Parent = hrp
+	else
+		-- Multi-player fly logic for other players
+		local tChar = targetPlayer.Character
+		if not tChar then return end
+		local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+		if not tHrp then return end
+
+		local att = Instance.new("Attachment", tHrp)
+		local lv = Instance.new("LinearVelocity", tHrp)
+		lv.MaxForce = 2e6
+		lv.Attachment0 = att
+		lv.RelativeTo = Enum.ActuatorRelativeTo.World
+
+		local align = Instance.new("AlignOrientation", tHrp)
+		align.Attachment0 = att
+		align.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		align.Responsiveness = 300
+
+		playerFlyStates[targetPlayer] = {lv=lv, att=att, align=align, speed=speed}
+	end
+end
+
+local function destroyFly(targetPlayer)
+	if targetPlayer == player then
+		if lv then lv:Destroy() lv = nil end
+		if att then att:Destroy() att = nil end
+		if align then align:Destroy() align = nil end
+	else
+		local state = playerFlyStates[targetPlayer]
+		if state then
+			if state.lv then state.lv:Destroy() end
+			if state.att then state.att:Destroy() end
+			if state.align then state.align:Destroy() end
+			playerFlyStates[targetPlayer] = nil
+		end
+	end
+end
+
+local function toggleFly()
+	flying = not flying
+	if flying then
+		createFly(player)
+		toggleBtn.Text = "Flying (Click to Stop)"
+	else
+		destroyFly(player)
+		toggleBtn.Text = "Toggle Fly"
+	end
+end
+
+-- Jump boost apply function for any player
+local function applyJumpBoost(targetPlayer, levelIndex)
+	local tChar = targetPlayer.Character
+	if not tChar then return end
+	local tHum = tChar:FindFirstChildOfClass("Humanoid")
+	if not tHum then return end
+	if tHum.UseJumpPower then
+		tHum.JumpPower = boosts[levelIndex]
+	else
+		tHum.JumpHeight = boosts[levelIndex]
+	end
+	playerJumpStates[targetPlayer] = levelIndex
+end
+
+-- ESP toggle function
+local function toggleESP()
+	espEnabled = not espEnabled
+	espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+
+	if not espEnabled then
+		for _, h in pairs(espObjects) do h:Destroy() end
+		espObjects = {}
+	else
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character then
+				local highlight = Instance.new("Highlight", p.Character)
+				highlight.FillColor = Color3.fromRGB(255, 0, 0)
+				espObjects[p] = highlight
+			end
+		end
+	end
+end
+
+-- Added noclip functions
+local function toggleNoclip()
+	noclipEnabled = not noclipEnabled
+	noclipBtn.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
+	
+	if noclipEnabled then
+		-- Store original collision states and disable collision
+		for _, part in pairs(char:GetChildren()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				originalCollisionStates[part] = part.CanCollide
+				part.CanCollide = false
+			end
+		end
+		-- Keep HumanoidRootPart collision off for full noclip
+		if hrp then
+			originalCollisionStates[hrp] = hrp.CanCollide
+			hrp.CanCollide = false
+		end
+	else
+		-- Restore original collision states
+		for part, originalState in pairs(originalCollisionStates) do
+			if part and part.Parent then
+				part.CanCollide = originalState
+			end
+		end
+		originalCollisionStates = {}
+	end
+end
+
+local function applyNoclipToPlayer(targetPlayer, enabled)
+	local tChar = targetPlayer.Character
+	if not tChar then return end
+	
+	if enabled then
+		for _, part in pairs(tChar:GetChildren()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	else
+		for _, part in pairs(tChar:GetChildren()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				part.CanCollide = true
+			end
+		end
+	end
+end
+
+-- Added god mode functions
+local function toggleGodMode()
+	godModeEnabled = not godModeEnabled
+	godModeBtn.Text = "God Mode: " .. (godModeEnabled and "ON" or "OFF")
+	
+	if godModeEnabled then
+		-- Prevent all damage by constantly setting health to max
+		godModeConnection = RS.Heartbeat:Connect(function()
+			if humanoid and humanoid.Health < humanoid.MaxHealth then
+				humanoid.Health = humanoid.MaxHealth
+			end
+		end)
+		-- Also prevent fall damage specifically
+		if humanoid then
+			humanoid.StateChanged:Connect(function(old, new)
+				if new == Enum.HumanoidStateType.FallingDown or new == Enum.HumanoidStateType.Flying then
+					humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+				end
+			end)
+		end
+	else
+		-- Disconnect god mode protection
+		if godModeConnection then
+			godModeConnection:Disconnect()
+			godModeConnection = nil
+		end
+	end
+end
+
+local function applyGodModeToPlayer(targetPlayer, enabled)
+	local tChar = targetPlayer.Character
+	if not tChar then return end
+	local tHum = tChar:FindFirstChildOfClass("Humanoid")
+	if not tHum then return end
+	
+	if enabled then
+		-- Create god mode protection for other players
+		local connection = RS.Heartbeat:Connect(function()
+			if tHum and tHum.Health < tHum.MaxHealth then
+				tHum.Health = tHum.MaxHealth
+			end
+		end)
+		playerGodModeStates[targetPlayer] = connection
+	else
+		-- Remove god mode protection
+		local connection = playerGodModeStates[targetPlayer]
+		if connection then
+			connection:Disconnect()
+			playerGodModeStates[targetPlayer] = nil
+		end
+	end
+end
+
+-- GUI buttons
+toggleBtn.MouseButton1Click:Connect(toggleFly)
+
+-- Enhanced jump button for cycling levels
+jumpBtn.MouseButton1Click:Connect(function()
+	jIndex = jIndex % #levels + 1
+	applyJumpBoost(player, jIndex)
+	jumpBtn.Text = "Jump Boost: " .. levels[jIndex]
+end)
+
+-- Speed buttons now update all flying players
+plusBtn.MouseButton1Click:Connect(function()
+	speed += 10
+	speedLabel.Text = "Speed: " .. speed
+	for _, state in pairs(playerFlyStates) do state.speed = speed end
+end)
+
+minusBtn.MouseButton1Click:Connect(function()
+	if speed > 10 then
+		speed -= 10
+		speedLabel.Text = "Speed: " .. speed
+		for _, state in pairs(playerFlyStates) do state.speed = speed end
+	end
+end)
+
+-- ESP button connection
+espBtn.MouseButton1Click:Connect(toggleESP)
+
+-- Added noclip button connection
+noclipBtn.MouseButton1Click:Connect(toggleNoclip)
+
+-- Added god mode button connection
+godModeBtn.MouseButton1Click:Connect(toggleGodMode)
+
+-- Search box functionality
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	refreshPlayerList(searchBox.Text)
+end)
+
+-- Enhanced keyboard movement with keys tracking
+UIS.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.W then 
+		moveDir = Vector3.new(moveDir.X, moveDir.Y, 1)
+		keys.W = true
+	end
+	if input.KeyCode == Enum.KeyCode.S then 
+		moveDir = Vector3.new(moveDir.X, moveDir.Y, -1)
+		keys.S = true
+	end
+	if input.KeyCode == Enum.KeyCode.A then 
+		moveDir = Vector3.new(-1, moveDir.Y, moveDir.Z)
+		keys.A = true
+	end
+	if input.KeyCode == Enum.KeyCode.D then 
+		moveDir = Vector3.new(1, moveDir.Y, moveDir.Z)
+		keys.D = true
+	end
+	if input.KeyCode == Enum.KeyCode.Space then 
+		moveDir = Vector3.new(moveDir.X, 1, moveDir.Z)
+		keys.Space = true
+	end
+	if input.KeyCode == Enum.KeyCode.LeftShift then 
+		moveDir = Vector3.new(moveDir.X, -1, moveDir.Z)
+		keys.Shift = true
+	end
+
+	-- Hide/show menu with CTRL
+	if input.KeyCode == Enum.KeyCode.LeftControl then
+		frame.Visible = not frame.Visible
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.S then 
+		moveDir = Vector3.new(moveDir.X, moveDir.Y, 0)
+		keys.W = false
+		keys.S = false
+	end
+	if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D then 
+		moveDir = Vector3.new(0, moveDir.Y, moveDir.Z)
+		keys.A = false
+		keys.D = false
+	end
+	if input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.LeftShift then 
+		moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+		keys.Space = false
+		keys.Shift = false
+	end
+end)
+
+-- Enhanced fly loop supporting multiple players
+RS.RenderStepped:Connect(function(dt)
+	-- Handle local player flight
+	if flying and lv then
+		local cam = workspace.CurrentCamera
+		local dir = (cam.CFrame.RightVector * moveDir.X) + (cam.CFrame.UpVector * moveDir.Y) + (cam.CFrame.LookVector * moveDir.Z)
+		if dir.Magnitude > 0 then dir = dir.Unit end
+		targetVel = dir * speed
+
+		local lerpSpeed = math.clamp(acceleration * dt * 2, 0, 0.8)
+		lv.VectorVelocity = lv.VectorVelocity:Lerp(targetVel, lerpSpeed)
+		align.CFrame = cam.CFrame
+	elseif flying and lv then
+		lv.VectorVelocity = lv.VectorVelocity:Lerp(Vector3.zero, math.clamp(acceleration * dt * 3, 0, 1))
+	end
+
+	-- Handle other players' flight
+	for targetPlayer, state in pairs(playerFlyStates) do
+		if state.lv and state.att then
+			local tChar = targetPlayer.Character
+			if tChar then
+				local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+				if tHrp then
+					local cam = workspace.CurrentCamera
+					local dir = Vector3.zero
+					-- Other players fly in place or can be controlled via additional logic
+					if dir.Magnitude > 0 then dir = dir.Unit end
+					local targetVel = dir * state.speed
+					state.lv.VectorVelocity = state.lv.VectorVelocity:Lerp(targetVel, math.clamp(acceleration*dt, 0, 1))
+					state.align.CFrame = cam.CFrame
+				else
+					destroyFly(targetPlayer)
+				end
+			else
+				destroyFly(targetPlayer)
+			end
+		end
+	end
+end)
+
+-- Player management events
+Players.PlayerAdded:Connect(function(p)
+	refreshPlayerList(searchBox.Text)
+	if espEnabled then
+		p.CharacterAdded:Connect(function(c)
+			local highlight = Instance.new("Highlight", c)
+			highlight.FillColor = Color3.fromRGB(255,0,0)
+			espObjects[p] = highlight
+		end)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+	destroyFly(p)
+	playerJumpStates[p] = nil
+	-- Cleanup god mode connection
+	local connection = playerGodModeStates[p]
+	if connection then
+		connection:Disconnect()
+		playerGodModeStates[p] = nil
+	end
+	if espObjects[p] then
+		espObjects[p]:Destroy()
+		espObjects[p] = nil
+	end
+	refreshPlayerList(searchBox.Text)
+end)
+
+-- Updated createPlayerEntry to include noclip button for other players
+local function createPlayerEntry(p)
+	local entry = Instance.new("Frame")
+	entry.Size = UDim2.new(1, 0, 0, 100) -- Increased height for god mode button
+	entry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	entry.Parent = playerList
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(0.6, -6, 0.3, 0) -- Adjusted height
+	nameLabel.Position = UDim2.new(0, 6, 0, 0)
+	nameLabel.Text = p.Name
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.Font = Enum.Font.SourceSans
+	nameLabel.TextSize = 16
+	nameLabel.Parent = entry
+
+	local flyBtn = Instance.new("TextButton")
+	flyBtn.Size = UDim2.new(0.38, -6, 0.2, -2) -- Adjusted height
+	flyBtn.Position = UDim2.new(0.62, 0, 0.05, 0)
+	flyBtn.Text = playerFlyStates[p] and "Stop Fly" or "Start Fly"
+	flyBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 250)
+	flyBtn.TextColor3 = Color3.new(1,1,1)
+	flyBtn.Font = Enum.Font.SourceSans
+	flyBtn.TextSize = 12
+	flyBtn.Parent = entry
+
+	local jumpBtn2 = Instance.new("TextButton")
+	jumpBtn2.Size = UDim2.new(0.38, -6, 0.2, -2) -- Adjusted height
+	jumpBtn2.Position = UDim2.new(0.62, 0, 0.27, 0) -- Adjusted position
+	jumpBtn2.Text = "Cycle Jump"
+	jumpBtn2.BackgroundColor3 = Color3.fromRGB(250, 150, 80)
+	jumpBtn2.TextColor3 = Color3.new(1,1,1)
+	jumpBtn2.Font = Enum.Font.SourceSans
+	jumpBtn2.TextSize = 12
+	jumpBtn2.Parent = entry
+
+	local noclipBtn2 = Instance.new("TextButton")
+	noclipBtn2.Size = UDim2.new(0.38, -6, 0.2, -2) -- Adjusted height
+	noclipBtn2.Position = UDim2.new(0.62, 0, 0.49, 0) -- Adjusted position
+	noclipBtn2.Text = "Noclip: OFF"
+	noclipBtn2.BackgroundColor3 = Color3.fromRGB(150, 250, 150)
+	noclipBtn2.TextColor3 = Color3.new(1,1,1)
+	noclipBtn2.Font = Enum.Font.SourceSans
+	noclipBtn2.TextSize = 12
+	noclipBtn2.Parent = entry
+
+	-- Added god mode button for other players
+	local godModeBtn2 = Instance.new("TextButton")
+	godModeBtn2.Size = UDim2.new(0.38, -6, 0.2, -2)
+	godModeBtn2.Position = UDim2.new(0.62, 0, 0.71, 0)
+	godModeBtn2.Text = "God: OFF"
+	godModeBtn2.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	godModeBtn2.TextColor3 = Color3.new(0, 0, 0)
+	godModeBtn2.Font = Enum.Font.SourceSans
+	godModeBtn2.TextSize = 12
+	godModeBtn2.Parent = entry
+
+	flyBtn.MouseButton1Click:Connect(function()
+		if playerFlyStates[p] then
+			destroyFly(p)
+			flyBtn.Text = "Start Fly"
+		else
+			createFly(p)
+			flyBtn.Text = "Stop Fly"
+		end
+	end)
+
+	jumpBtn2.MouseButton1Click:Connect(function()
+		local current = playerJumpStates[p] or 2
+		local nextIdx = current % #levels + 1
+		applyJumpBoost(p, nextIdx)
+		jumpBtn2.Text = "Jump: " .. levels[nextIdx]
+	end)
+
+	-- Added noclip functionality for other players
+	noclipBtn2.MouseButton1Click:Connect(function()
+		local currentState = noclipBtn2.Text:find("ON") ~= nil
+		local newState = not currentState
+		applyNoclipToPlayer(p, newState)
+		noclipBtn2.Text = "Noclip: " .. (newState and "ON" or "OFF")
+	end)
+
+	-- Added god mode functionality for other players
+	godModeBtn2.MouseButton1Click:Connect(function()
+		local currentState = godModeBtn2.Text:find("ON") ~= nil
+		local newState = not currentState
+		applyGodModeToPlayer(p, newState)
+		godModeBtn2.Text = "God: " .. (newState and "ON" or "OFF")
+	end)
+
+	return entry
+end
+
+-- Updated refreshPlayerList to accommodate larger entries
+local function refreshPlayerList(filter)
+	playerList:ClearAllChildren()
+	local y = 0
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player then
+			if not filter or filter == "" or p.Name:lower():find(filter:lower()) then
+				createPlayerEntry(p)
+				y = y + 106  -- Increased spacing for god mode button
+			end
+		end
+	end
+	playerList.CanvasSize = UDim2.new(0, 0, 0, y)
+end
+
+-- Added character respawn handling to maintain noclip state
+player.CharacterAdded:Connect(function(newChar)
+	char = newChar
+	hrp = char:WaitForChild("HumanoidRootPart")
+	humanoid = char:WaitForChild("Humanoid")
+	
+	-- Reapply noclip if it was enabled
+	if noclipEnabled then
+		wait(1) -- Wait for character to fully load
+		toggleNoclip()
+		toggleNoclip() -- Toggle twice to reapply
+	end
+	
+	-- Reapply god mode if it was enabled
+	if godModeEnabled then
+		wait(1) -- Wait for character to fully load
+		toggleGodMode()
+		toggleGodMode() -- Toggle twice to reapply
+	end
+end)
+
+-- Initialize player list
+refreshPlayerList()
